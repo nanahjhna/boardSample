@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="bbs">
+	<insert id="insertBoard" parameterType="com.sp.bbs.Board">
+	  INSERT INTO bbs(name, subject, content, pwd, ipAddr, created, hitCount)
+	  VALUES (#{name}, #{subject}, #{content}, #{pwd}, #{ipAddr}, NOW(), 0)
+	</insert>
+	
+	<!--
+       * INSTR() 대신 LIKE도 사용 가능 
+          subject LIKE CONCAT('%', #{keyword}, '%')
+	-->
+	<sql id="where-list">
+	    <if test="condition=='all' ">
+	       (INSTR(subject, #{keyword}) &gt; 0
+			    OR INSTR(content, #{keyword}) &gt; 0)
+	    </if>
+	    <if test="condition=='subject' ">
+	       INSTR(subject, #{keyword}) &gt; 0
+	    </if>
+	    <if test="condition=='content' ">
+	       INSTR(content, #{keyword}) &gt; 0
+	    </if>
+	    <if test="condition=='name' ">
+	       INSTR(name, #{keyword}) = 1
+	    </if>
+	    <if test="condition=='created' ">
+	       DATE_FORMAT(created, '%Y-%m-%d') = #{keyword}
+	    </if>
+	</sql>
+	
+	<select id="dataCount" parameterType="map" resultType="Integer">
+	     SELECT IFNULL(COUNT(*), 0)
+	     FROM bbs
+	     <where>
+	     	<if test="keyword != null and keyword !='' ">
+	     	    <include refid="where-list"/>
+	     	</if>
+	     </where>
+	</select>
+	
+	<select id="listBoard" parameterType="map" resultType="com.sp.bbs.Board">
+       SELECT num, name, subject, hitCount,
+              DATE_FORMAT(created, '%Y-%m-%d') AS created
+       FROM bbs
+       <where>
+	     	<if test="keyword != null and keyword !='' ">
+	     	    <include refid="where-list"/>
+	     	</if>
+	   </where>
+       ORDER BY num DESC
+       LIMIT #{offset}, #{rows}
+	</select>
+	
+	<select id="readBoard" parameterType="Integer" resultType="com.sp.bbs.Board">
+       SELECT num, name, subject, content, ipAddr,
+              pwd, hitCount, created
+       FROM bbs
+       WHERE num=#{num}	           
+	</select>
+	
+	<select id="preReadBoard" parameterType="map" resultType="com.sp.bbs.Board">
+        SELECT num, subject
+        FROM bbs
+	    <where>
+	     	<if test="keyword != null and keyword !='' ">
+	     	    <include refid="where-list"/>
+	     	</if>
+	     	AND (num &gt; #{num})
+	    </where>
+        ORDER BY num ASC
+        LIMIT 1
+	</select>
+	
+	<select id="nextReadBoard" parameterType="map" resultType="com.sp.bbs.Board">
+        SELECT num, subject
+        FROM bbs
+	    <where>
+	     	<if test="keyword != null and keyword !='' ">
+	     	        <include refid="where-list"/>
+	     	</if>
+	     	AND (num &lt; #{num})
+	    </where>
+        ORDER BY num DESC
+        LIMIT 1
+	</select>
+	
+	<update id="updateHitCount" parameterType="Integer">
+	    UPDATE bbs SET hitCount=hitCount+1 WHERE num=#{num}
+	</update>
+	
+	<update id="updateBoard" parameterType="com.sp.bbs.Board">
+	    UPDATE bbs SET name=#{name}, 
+	                   subject=#{subject},
+	                   content=#{content},
+	                   pwd=#{pwd}
+	    WHERE num=#{num}
+	</update>
+	
+	<delete id="deleteBoard" parameterType="Integer">
+	   DELETE FROM bbs WHERE num=#{num}
+	</delete>
+</mapper>
